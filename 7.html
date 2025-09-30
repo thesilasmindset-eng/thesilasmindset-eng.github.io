@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>書店網站</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    nav {
+      background-color: #333;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      background-color: #ddd;
+      color: black;
+    }
+
+    section {
+      display: none;
+      padding: 30px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    section.active {
+      display: block;
+    }
+
+    .book-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .book-item {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .book-item img {
+      max-width: 100%;
+      height: 300px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      margin-top: 10px;
+    }
+
+    .cta-button:hover {
+      background-color: #45a049;
+    }
+
+    footer {
+      text-align: center;
+      background-color: #333;
+      color: white;
+      padding: 15px;
+      margin-top: 30px;
+    }
+
+    img.full-width {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>歡迎來到我們的書店</h1>
+    <p>探索我們精選的書籍，為您帶來不一樣的閱讀體驗。</p>
+  </header>
+
+  <nav>
+    <a href="#" onclick="showPage('home')">首頁</a>
+    <a href="#" onclick="showPage('books')">書籍介紹</a>
+    <a href="#" onclick="showPage('about')">關於我們</a>
+    <a href="#" onclick="showPage('promotions')">最新書籍</a>
+    <a href="#" onclick="showPage('contact')">聯繫我們</a>
+  </nav>
+
+  <!-- 首頁 -->
+  <section id="home" class="active">
+    <img src="https://via.placeholder.com/1200x300?text=歡迎光臨+我們的書店" alt="首頁橫幅" class="full-width">
+    <h2>本月推薦</h2>
+    <p>我們精選的書籍推薦給愛書的您！點擊下方進入書籍介紹頁面查看更多。</p>
+    <a href="#" class="cta-button" onclick="showPage('books')">查看書籍介紹</a>
+  </section>
+
+  <!-- 書籍介紹 -->
+  <section id="books">
+    <h2>書籍列表</h2>
+    <div class="book-list">
+      <div class="book-item">
+        <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=500&q=80" alt="書籍1">
+        <h3>書名：世界之書</h3>
+        <p>一本關於世界文化的深度探索書籍。</p>
+        <a href="#" class="cta-button">了解更多</a>
+      </div>
+      <div class="book-item">
+        <img src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=500&q=80" alt="書籍2">
+        <h3>書名：未來城市</h3>
+        <p>描述未來城市生活與科技的幻想小說。</p>
+        <a href="#" class="cta-button">了解更多</a>
+      </div>
+      <div class="book-item">
+        <img src="https://images.unsplash.com/photo-1588776814546-ec7f6c20c00b?auto=format&fit=crop&w=500&q=80" alt="書籍3">
+        <h3>書名：心靈地圖</h3>
+        <p>一本幫助你自我探索與成長的心靈指南。</p>
+        <a href="#" class="cta-button">了解更多</a>
+      </div>
+      <div class="book-item">
+        <img src="https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=500&q=80" alt="書籍4">
+        <h3>書名：寫給未來的信</h3>
+        <p>記錄一段跨越時空的動人故事。</p>
+        <a href="#" class="cta-button">了解更多</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 關於我們 -->
+  <section id="about">
+    <img src="https://via.placeholder.com/1000x400?text=關於我們" alt="關於我們圖片" class="full-width">
+    <h2>我們的故事</h2>
+    <p>書店創立於 2010 年，致力於為每一位愛書人提供最豐富與精緻的閱讀選擇。</p>
+    <h3>我們的使命</h3>
+    <p>讓每個人都能輕鬆找到心中那本書。</p>
+  </section>
+
+  <!-- 最新書籍 / 促銷 -->
+  <section id="promotions">
+    <img src="https://via.placeholder.com/1000x300?text=促銷活動中" alt="促銷圖片" class="full-width">
+    <h2>📚 最新上架</h2>
+    <ul>
+      <li>《心靈之書》 - 2025年9月新書</li>
+      <li>《地球奇觀》 - 全彩插圖版</li>
+    </ul>
+    <h2>🎉 限時優惠</h2>
+    <ul>
+      <li>任選兩本旅遊書籍享 85 折</li>
+      <li>買一送一：兒童繪本專區</li>
+    </ul>
+  </section>
+
+  <!-- 聯絡我們 -->
+  <section id="contact">
+    <img src="https://via.placeholder.com/1000x300?text=聯絡我們地圖" alt="地圖圖片" class="full-width">
+    <h2>聯絡資訊</h2>
+    <p>地址：書店街123號</p>
+    <p>電話：123-456-7890</p>
+    <p>Email：contact@bookstore.com</p>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 書店網站 | 所有權利保留</p>
+  </footer>
+
+  <script>
+    function showPage(pageId) {
+      const sections = document.querySelectorAll('section');
+      sections.forEach(section => section.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+  </script>
+
+</body>
+</html>
