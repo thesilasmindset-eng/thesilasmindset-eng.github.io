@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <title>蔬菜購買網站 - 購物車功能</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        /* 基本樣式 */
+        * {
+            box-sizing: border-box;
+            margin: 0; padding: 0;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background-color: #4caf50;
+            padding: 1rem;
+            text-align: center;
+            color: white;
+        }
+        nav {
+            background: #388e3c;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            margin: 0 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        main {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+        section {
+            display: none;
+        }
+        section.active {
+            display: block;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+            gap: 1.5rem;
+        }
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .product-card img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+        }
+        .product-info {
+            padding: 1rem;
+        }
+        .product-info h3 {
+            margin-bottom: 0.4rem;
+        }
+        .product-info p {
+            margin-bottom: 0.3rem;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 0.6rem;
+            padding: 0.5rem 1rem;
+            background-color: #4caf50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #388e3c;
+        }
+        .detail-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .detail-container img {
+            max-width: 320px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+        }
+        .detail-info {
+            max-width: 600px;
+        }
+        .cart-list {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+        }
+        .cart-list table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .cart-list th,
+        .cart-list td {
+            padding: 0.8rem;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .cart-list img {
+            width: 60px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .quantity-input {
+            width: 50px;
+            padding: 0.2rem 0.4rem;
+            text-align: center;
+        }
+        .remove-btn {
+            background: #e53935;
+            border: none;
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .remove-btn:hover {
+            background: #ab000d;
+        }
+        .total-row {
+            font-weight: bold;
+        }
+        .checkout-btn {
+            margin-top: 1rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right;
+        }
+        .checkout-btn:hover {
+            background-color: #388e3c;
+        }
+        form {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 2rem auto 0 auto;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+        }
+        form label {
+            display: block;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+        form input, form select {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.3rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        form button {
+            margin-top: 1.5rem;
+            width: 100%;
+            padding: 0.7rem;
+            font-size: 16px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        form button:hover {
+            background-color: #388e3c;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>蔬菜購買網站</h1>
+    </header>
+    <nav>
+        <a onclick="showSection('home')">首頁</a>
+        <a onclick="showSection('cart')">購物車 (<span id="cartCount">0</span>)</a>
+        <a onclick="showSection('checkout')">結帳</a>
+    </nav>
+
+    <main>
+        <!-- 首頁 -->
+        <section id="home" class="active">
+            <h2>商品列表</h2>
+            <div class="product-grid" id="productList"></div>
+        </section>
+
+        <!-- 商品詳情 -->
+        <section id="detail">
+            <h2>商品詳情</h2>
+            <div class="detail-container" id="productDetail"></div>
+            <button class="btn" onclick="showSection('home')">返回首頁</button>
+        </section>
+
+        <!-- 購物車 -->
+        <section id="cart">
+            <h2>購物車</h2>
+            <div class="cart-list" id="cartList"></div>
+            <button class="checkout-btn" onclick="proceedCheckout()">前往結帳</button>
+        </section>
+
+        <!-- 結帳 -->
+        <section id="checkout">
+            <h2>結帳</h2>
+            <form id="checkoutForm" onsubmit="submitOrder(event)">
+                <label for="name">姓名：</label>
+                <input type="text" id="name" required />
+                <label for="address">地址：</label>
+                <input type="text" id="address" required />
+                <label for="payment">支付方式：</label>
+                <select id="payment" required>
+                    <option value="">請選擇支付方式</option>
+                    <option value="credit-card">信用卡</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="cod">貨到付款</option>
+                </select>
+                <button type="submit">確認付款</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2025 蔬菜購買網站</p>
+    </footer>
+
+    <script>
+        // 產品資料
+        const products = [
+            {
+                id: "tomato",
+                name: "番茄",
+                price: 50,
+                origin: "台灣",
+                produced: "2025年5月",
+                quality: "新鮮、無農藥",
+                img: "https://cdn.pixabay.com/photo/2017/01/20/00/30/tomato-1995056_1280.jpg",
+            },
+            {
+                id: "cucumber",
+                name: "黃瓜",
+                price: 30,
+                origin: "日本",
+                produced: "2025年4月",
+                quality: "鮮脆、無農藥",
+                img: "https://cdn.pixabay.com/photo/2017/04/12/19/29/cucumber-2224021_1280.jpg",
+            },
+            {
+                id: "carrot",
+                name: "紅蘿蔔",
+                price: 25,
+                origin: "韓國",
+                produced: "2025年6月",
+                quality: "甘甜、新鮮",
+                img: "https://cdn.pixabay.com/photo/2017/01/20/15/06/carrots-1995567_1280.jpg",
+            },
+            {
+                id: "lettuce",
+                name: "萵苣",
+                price: 40,
+                origin: "台灣",
+                produced: "2025年3月",
+                quality: "脆嫩、無農藥",
+                img: "https://cdn.pixabay.com/photo/2018/04/02/19/19/lettuce-3287093_1280.jpg",
+            },
+            {
+                id: "pumpkin",
+                name: "南瓜",
+                price: 60,
+                origin: "台灣",
+                produced: "2025年7月",
+                quality: "甜美、口感細緻",
+                img: "https://cdn.pixabay.com/photo/2016/10/24/20/59/pumpkin-1752406_1280.jpg",
+            },
+            {
+                id: "spinach",
+                name: "菠菜",
+                price: 35,
+                origin: "日本",
+                produced: "2025年5月",
+                quality: "新鮮、富含營養",
+                img: "https://cdn.pixabay.com/photo/2017/06/22/22/11/spinach-2433421_1280.jpg",
+            },
+            {
+                id: "eggplant",
+                name: "茄子",
+                price: 45,
+                origin: "韓國",
+                produced: "2025年4月",
+                quality: "紫色鮮亮、口感柔嫩",
+                img: "https://cdn.pixabay.com/photo/2017/07/12/20/57/eggplants-2499936_1280.jpg",
+            },
+        ];
+
+        const productList = document.getElementById("productList");
+        const productDetail = document.getElementById("productDetail");
+        const cartList = document.getElementById("cartList");
+        const cartCount = document.getElementById("cartCount");
+
+        let cart = [];
+
+        // 顯示首頁商品
+        function renderProducts() {
+            productList.innerHTML = "";
+            products.forEach((p) => {
+                const div = document.createElement("div");
+                div.className = "product-card";
+                div.innerHTML = `
+                    <img src="${p.img}" alt="${p.name}" />
+                    <div class="product-info">
+                        <h3>${p.name}</h3>
+                        <p>價格：NT$ ${p.price}</p>
+                        <p>產地：${p.origin}</p>
+                        <button class="btn" onclick="showProduct('${p.id}')">查看詳情</button>
+                    </div>
+                `;
+                productList.appendChild(div);
+            });
+        }
+
+        // 切換顯示的頁面
+        function showSection(id) {
+            document.querySelectorAll("section").forEach((s) =>
+                s.classList.remove("active")
+            );
+            document.getElementById(id).classList.add("active");
+
+            if (id === "cart") renderCart();
+        }
+
+        // 顯示詳情頁
+        function showProduct(id) {
+            const p = products.find((prod) => prod.id === id);
+            if (!p) return;
+
+            productDetail.innerHTML = `
+                <img src="${p.img}" alt="${p.name}" />
+                <div class="detail-info">
+                    <h3>${p.name}</h3>
+                    <p>價格：NT$ ${p.price}</p>
+                    <p>產地：${p.origin}</p>
+                    <p>生產時間：${p.produced}</p>
+                    <p>品質：${p.quality}</p>
+                    <button class="btn" onclick="addToCart('${p.id}')">加入購物車</button>
+                </div>
+            `;
+            showSection("detail");
+        }
+
+        // 加入購物車
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            // 檢查購物車是否已有此商品
+            const cartItem = cart.find(item => item.id === id);
+            if (cartItem) {
+                cartItem.qty++;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+
+            alert(`「${product.name}」已加入購物車！`);
+            updateCartCount();
+            showSection("cart");
+        }
+
+        // 更新購物車數量顯示
+        function updateCartCount() {
+            const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+            cartCount.textContent = totalQty;
+        }
+
+        // 顯示購物車清單
+        function renderCart() {
+            if (cart.length === 0) {
+                cartList.innerHTML = "<p>購物車目前是空的。</p>";
+                return;
+            }
+
+            let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>圖片</th>
+                        <th>商品名稱</th>
+                        <th>單價 (NT$)</th>
+                        <th>數量</th>
+                        <th>小計 (NT$)</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            cart.forEach(item => {
+                html += `
+                <tr>
+                    <td><img src="${item.img}" alt="${item.name}"></td>
+                    <td>${item.name}</td>
+                    <td>${item.price}</td>
+                    <td>
+                        <input type="number" min="1" class="quantity-input" value="${item.qty}" onchange="updateQuantity('${item.id}', this.value)" />
+                    </td>
+                    <td>${item.price * item.qty}</td>
+                    <td><button class="remove-btn" onclick="removeFromCart('${item.id}')">刪除</button></td>
+                </tr>
+                `;
+            });
+
+            const totalPrice = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+            html += `
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="4" style="text-align:right;">總計：</td>
+                        <td colspan="2">NT$ ${totalPrice}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            `;
+
+            cartList.innerHTML = html;
+        }
+
+        // 更新購物車中商品數量
+        function updateQuantity(id, qty) {
+            qty = parseInt(qty);
+            if (isNaN(qty) || qty < 1) {
+                alert("數量不能小於1");
+                renderCart();
+                return;
+            }
+
+            const cartItem = cart.find(item => item.id === id);
+            if (cartItem) {
+                cartItem.qty = qty;
+                renderCart();
+                updateCartCount();
+            }
+        }
+
+        // 從購物車刪除商品
+        function removeFromCart(id) {
+            cart = cart.filter(item => item.id !== id);
+            renderCart();
+            updateCartCount();
+        }
+
+        // 前往結帳頁面
+        function proceedCheckout() {
+            if (cart.length === 0) {
+                alert("購物車是空的，請先加入商品。");
+                return;
+            }
+            showSection("checkout");
+        }
+
+        // 結帳送出
+        function submitOrder(e) {
+            e.preventDefault();
+
+            if (cart.length === 0) {
+                alert("購物車是空的，無法結帳。");
+                showSection("home");
+                return;
+            }
+
+            const name = document.getElementById("name").value.trim();
+            const address = document.getElementById("address").value.trim();
+            const payment = document.getElementById("payment").value;
+
+            if (!name || !address || !payment) {
+                alert("請填寫完整資料。");
+                return;
+            }
+
+            // 這裡你可以送到伺服器，現在先模擬成功
+            alert(`感謝您的訂購，${name}！\n訂單已成立，我們將寄送到：${address}\n付款方式：${payment}`);
+
+            // 清空購物車
+            cart = [];
+            updateCartCount();
+
+            // 清空表單
+            e.target.reset();
+
+            showSection("home");
+        }
+
+        // 初始化
+        renderProducts();
+        updateCartCount();
+
+    </script>
+</body>
+</html>
