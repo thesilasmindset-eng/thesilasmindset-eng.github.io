@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>航管 AI 問答</title>
+<style>
+body{font-family:"Noto Sans TC",system-ui;margin:0;background:#f4f7fb;color:#0f172a}
+.wrap{max-width:960px;margin:40px auto;padding:20px}
+.card{background:#fff;padding:20px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,0.08)}
+h1{margin:0 0 6px;font-size:22px}
+.muted{color:#64748b;font-size:13px;margin-bottom:16px}
+label{font-weight:600;display:block;margin:12px 0 6px}
+select,textarea,button{width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:15px}
+textarea{resize:vertical;min-height:120px}
+button{cursor:pointer;font-weight:600}
+.btn{background:#2563eb;color:#fff;border:none}
+.btn:hover{background:#1e4fd7}
+.btn.secondary{background:#475569}
+.btn.danger{background:#b91c1c}
+pre{background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;min-height:80px}
+.small{font-size:13px;color:#64748b;margin-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.history{margin-top:14px;border-top:1px solid #cbd5e1;padding-top:12px}
+.history-item{background:#f9fafb;padding:10px;border-radius:8px;margin-bottom:8px}
+.status{font-size:13px;color:#64748b;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>航管 AI 問答</h1>
+    <div class="muted">前端不需 API Key，安全取得 AI 回答</div>
+
+    <label>主題</label>
+    <select id="topic"></select>
+
+    <label>目標</label>
+    <select id="goal"></select>
+
+    <label>你的問題</label>
+    <textarea id="question" placeholder="例如：如何改善離場高峰延誤？"></textarea>
+
+    <div class="row">
+      <button id="askBtn" class="btn">送出問題</button>
+      <button id="stopBtn" class="btn secondary">停止動畫</button>
+      <button id="speakBtn" class="btn secondary">朗讀回答</button>
+      <button id="downloadBtn" class="btn secondary">下載報告</button>
+      <button id="clearBtn" class="btn danger">清除</button>
+    </div>
+
+    <label>AI 回覆</label>
+    <pre id="answer">尚無回覆</pre>
+    <div id="status" class="status"></div>
+
+    <div class="history">
+      <div class="small">歷史紀錄（最近 5 筆）</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 主題與目標
+const topicEl = document.getElementById('topic');
+const goalEl = document.getElementById('goal');
+const topics = ["航管作業流程","航班分配與流量管理","塔臺/區域協調","航管系統設計","安全事件調查","訓練與考核"];
+const goals = ["解釋核心概念","找出瓶頸建議改善","教學練習題與答案","SOP 草案"];
+topics.forEach(t=>topicEl.add(new Option(t,t)));
+goals.forEach(g=>goalEl.add(new Option(g,g)));
+
+// DOM
+const questionEl=document.getElementById('question');
+const askBtn=document.getElementById('askBtn');
+const stopBtn=document.getElementById('stopBtn');
+const speakBtn=document.getElementById('speakBtn');
+const downloadBtn=document.getElementById('downloadBtn');
+const clearBtn=document.getElementById('clearBtn');
+const answerEl=document.getElementById('answer');
+const statusEl=document.getElementById('status');
+const historyList=document.getElementById('historyList');
+
+let typingTimer=null;
+let lastText="";
+let history=[];
+
+// 建構 prompt
+function buildPrompt(){
+  return `主題：${topicEl.value}\n目標：${goalEl.value}\n問題：${questionEl.value}`;
+}
+
+// 逐字動畫
+function typeWriter(el,text,speed=15){
+  el.textContent=""; let i=0;
+  clearInterval(typingTimer);
+  typingTimer=setInterval(()=>{
+    el.textContent+=text.charAt(i);
+    i++;
+    if(i>=text.length) clearInterval(typingTimer);
+  },speed);
+  lastText=text;
+}
+stopBtn.onclick=()=>{clearInterval(typingTimer); answerEl.textContent=lastText;};
+
+// 語音朗讀
+speakBtn.onclick=()=>{
+  if(!lastText) return alert("沒有回答可朗讀");
+  const utter=new SpeechSynthesisUtterance(lastText);
+  utter.lang='zh-TW';
+  speechSynthesis.speak(utter);
+};
+
+// 歷史紀錄
+function addHistory(question,answer){
+  history.unshift({q:question,a:answer});
+  if(history.length>5) history.pop();
+  renderHistory();
+}
+function renderHistory(){
+  historyList.innerHTML="";
+  history.forEach(h=>{
+    const div=document.createElement('div');
+    div.className='history-item';
+    div.innerHTML=`<b>Q:</b> ${h.q}<br><b>A:</b> ${h.a}`;
+    historyList.appendChild(div);
+  });
+}
+
+// 下載報告
+downloadBtn.onclick=()=>{
+  if(!lastText) return alert("沒有回答可下載");
+  const md=`# 航管 AI 問答報告\n\n**主題**: ${topicEl.value}\n**目標**: ${goalEl.value}\n**問題**:\n${questionEl.value}\n\n**AI 回答**:\n${lastText}`;
+  const blob=new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='atm_ai_report.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// 清除
+clearBtn.onclick=()=>{
+  answerEl.textContent="尚無回覆";
+  statusEl.textContent="";
+  questionEl.value="";
+};
+
+// 呼叫後端代理
+async function callBackend(prompt){
+  statusEl.textContent="⌛ 正在取得 AI 回覆...";
+  answerEl.textContent="";
+  try{
+    const res = await fetch("http://localhost:3000/ask",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({prompt})
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    typeWriter(answerEl,data.answer);
+    statusEl.textContent="✅ 完成";
+    addHistory(questionEl.value,data.answer);
+  }catch(e){
+    statusEl.textContent="❌ 錯誤：" + e.message;
+    answerEl.textContent="";
+  }
+}
+
+// 送出問題
+askBtn.onclick=()=>{
+  if(!questionEl.value.trim()) return alert("請輸入問題");
+  const prompt = buildPrompt();
+  callBackend(prompt);
+};
+</script>
+</body>
+</html>
