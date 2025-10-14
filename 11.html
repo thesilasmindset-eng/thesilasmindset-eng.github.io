@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>航管 AI 問答工具（優化版）</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --fg: #1e293b;
+      --accent: #2563eb;
+      --card: #ffffff;
+      --muted: #64748b;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans TC', system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    select, textarea, button {
+      width: 100%;
+      font-size: 1rem;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      border: 1px solid #cbd5e1;
+    }
+    select, textarea { background: #fff; }
+    textarea { resize: vertical; min-height: 140px; }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+    button:hover { background: #1d4ed8; }
+    pre {
+      background: #f1f5f9;
+      padding: 12px;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      margin-top: 10px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    footer { text-align: center; font-size: 0.8rem; color: var(--muted); margin-top: 20px; }
+    .alert { color: #b91c1c; font-weight: 700; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>航管 AI 問答工具（優化版）</h1>
+    <p class="muted">本工具協助設計航管相關的精準提示詞（Prompt），並可匯出 HTML/企劃書。禁止用於實際航管決策。</p>
+
+    <div class="grid">
+      <div>
+        <label for="topic">主題</label>
+        <select id="topic"></select>
+      </div>
+      <div>
+        <label for="goal">目標</label>
+        <select id="goal"></select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="auto">自動產生提示詞</button>
+      <button id="send">送出給後端（需 /api/chat）</button>
+      <button id="downloadHtml">下載此 HTML 檔</button>
+      <button id="downloadMd">下載企劃書草稿</button>
+    </div>
+
+    <div style="margin-top:14px">
+      <label for="prompt">提示詞（Prompt）</label>
+      <textarea id="prompt"></textarea>
+    </div>
+
+    <div style="margin-top:14px">
+      <label>AI 回覆</label>
+      <pre id="reply">尚無回覆</pre>
+    </div>
+
+    <div class="alert">⚠️ 本工具僅供教學與設計用途，嚴禁用於實際航管操作。</div>
+
+    <footer>航管 AI 工具 © 2025 | 僅供教育用途 | 若需部署請建立安全後端代理。</footer>
+  </div>
+
+  <script>
+    const topicOptions = [
+      '航管作業流程', '航班分配與流量管理', '塔臺/區域協調',
+      '航管系統設計 (ATM/TBO/Trajectories)', '安全事件調查與 Root Cause', '訓練與考核'
+    ];
+    const goalExamples = [
+      '簡潔解釋核心概念（給學生）', '找出系統瓶頸並提出改善建議（工程向）',
+      '給出題目測試與答案（教學向）', '產出 SOP 草案（行政向）'
+    ];
+
+    const topicEl = document.getElementById('topic');
+    const goalEl = document.getElementById('goal');
+    const promptEl = document.getElementById('prompt');
+    const replyEl = document.getElementById('reply');
+
+    topicOptions.forEach(t => topicEl.add(new Option(t, t)));
+    goalExamples.forEach(g => goalEl.add(new Option(g, g)));
+
+    const makePrompt = (topic, goal) => `你是一位具有15年民航航管經驗的專家（含塔臺、區域控制與空域流量管理），同時熟悉系統工程與人因。\n目標：${goal}\n\n請根據主題「${topic}」說明：\n1. 30-60字核心結論（要可執行）\n2. 關鍵假設與限制條件\n3. 改善建議步驟（短期 / 中期 / 長期）與效益\n4. 驗證指標（KPI）\n5. 潛在風險與緩解建議\n\n（安全聲明：此回答僅供教學、概念設計使用，不可作為實際航管決策依據。）`;
+
+    document.getElementById('auto').onclick = () => {
+      promptEl.value = makePrompt(topicEl.value, goalEl.value);
+    };
+
+    document.getElementById('send').onclick = async () => {
+      const prompt = promptEl.value.trim();
+      if (!prompt) return alert('請先輸入提示詞。');
+      replyEl.textContent = '⏳ 呼叫後端中...';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await res.json();
+        replyEl.textContent = data.reply || data.text || JSON.stringify(data, null, 2);
+      } catch (e) {
+        replyEl.textContent = '❌ 呼叫失敗：' + e.message + '\n請確認 /api/chat 是否存在。';
+      }
+    };
+
+    document.getElementById('downloadHtml').onclick = () => {
+      const html = '<!doctype html>\n<html>' + document.documentElement.innerHTML + '</html>';
+      const blob = new Blob([html], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'atm-ai-tool.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    document.getElementById('downloadMd').onclick = () => {
+      const md = `# 航管 AI 問答網站 — 企劃書草稿\n\n## 主題\n${topicEl.value}\n\n## 目標\n${goalEl.value}\n\n## 功能\n- 精準 Prompt 生成\n- AI 回覆顯示區\n- 匯出 HTML / Markdown\n\n## 技術方案\n- 前端：單檔 HTML\n- 後端：安全代理呼叫 LLM API\n- 模型：LLM（GPT 系列或等效）\n\n## 安全與限制\n- 僅供教育、研究與比賽用途\n- 禁止用於即時航管決策\n`;
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '企劃書草稿.md';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    // 初始化預設值
+    topicEl.value = topicOptions[0];
+    goalEl.value = goalExamples[0];
+    promptEl.value = makePrompt(topicEl.value, goalEl.value);
+  </script>
+</body>
+</html>
