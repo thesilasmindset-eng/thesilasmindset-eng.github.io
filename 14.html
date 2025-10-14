@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>航管 AI 問答 - 全功能優化版</title>
+<style>
+body{font-family:"Noto Sans TC",system-ui;margin:0;background:#f4f7fb;color:#0f172a}
+.wrap{max-width:960px;margin:40px auto;padding:20px}
+.card{background:#fff;padding:20px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,0.08)}
+h1{margin:0 0 6px;font-size:22px}
+.muted{color:#64748b;font-size:13px;margin-bottom:16px}
+label{font-weight:600;display:block;margin:12px 0 6px}
+select,input,textarea,button{width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:15px}
+textarea{resize:vertical;min-height:120px}
+button{cursor:pointer;font-weight:600}
+.btn{background:#2563eb;color:#fff;border:none}
+.btn:hover{background:#1e4fd7}
+.btn.secondary{background:#475569}
+.btn.danger{background:#b91c1c}
+pre{background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;min-height:80px}
+.small{font-size:13px;color:#64748b;margin-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.history{margin-top:14px;border-top:1px solid #cbd5e1;padding-top:12px}
+.history-item{background:#f9fafb;padding:10px;border-radius:8px;margin-bottom:8px}
+.status{font-size:13px;color:#64748b;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>航管 AI 問答</h1>
+    <div class="muted">可輸入問題 → AI 回答（教學/示範用途）</div>
+
+    <label>OpenAI API Key（可留空使用模擬模式）</label>
+    <input id="apiKey" type="password" placeholder="sk-..." />
+
+    <label>主題</label>
+    <select id="topic"></select>
+
+    <label>目標</label>
+    <select id="goal"></select>
+
+    <label>你的問題</label>
+    <textarea id="question" placeholder="例如：如何改善離場高峰延誤？"></textarea>
+
+    <div class="row">
+      <button id="askBtn" class="btn">送出並取得回答</button>
+      <button id="mockBtn" class="btn secondary">模擬回答</button>
+      <button id="stopBtn" class="btn secondary">停止動畫</button>
+      <button id="speakBtn" class="btn secondary">朗讀回答</button>
+      <button id="downloadBtn" class="btn secondary">下載報告</button>
+      <button id="clearBtn" class="btn danger">清除</button>
+    </div>
+
+    <label>AI 回覆</label>
+    <pre id="answer">尚無回覆</pre>
+    <div id="status" class="status"></div>
+
+    <div class="history">
+      <div class="small">歷史紀錄（最近 5 筆）</div>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="small">
+      <div class="danger">⚠️ 注意：</div>
+      僅供教學、設計與研究用途，請勿用於即時航管決策。
+    </div>
+  </div>
+</div>
+
+<script>
+// ----- 主題與目標推薦 -----
+const topicEl = document.getElementById('topic');
+const goalEl = document.getElementById('goal');
+const topics = ["航管作業流程","航班分配與流量管理","塔臺/區域協調","航管系統設計 (ATM/TBO/Trajectories)","安全事件調查與 Root Cause","訓練與考核"];
+const goals = ["簡潔解釋核心概念（給學生）","找出系統瓶頸並提出改善建議（工程向）","給出題目測試/練習與答案（教學向）","產出 SOP 草案（行政向）"];
+topics.forEach(t=>topicEl.add(new Option(t,t)));
+goals.forEach(g=>goalEl.add(new Option(g,g)));
+
+// DOM
+const questionEl = document.getElementById('question');
+const askBtn = document.getElementById('askBtn');
+const mockBtn = document.getElementById('mockBtn');
+const stopBtn = document.getElementById('stopBtn');
+const speakBtn = document.getElementById('speakBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const clearBtn = document.getElementById('clearBtn');
+const answerEl = document.getElementById('answer');
+const statusEl = document.getElementById('status');
+const historyList = document.getElementById('historyList');
+const apiKeyEl = document.getElementById('apiKey');
+
+let typingTimer=null;
+let lastText="";
+
+// ----- Prompt 建構 -----
+function buildPrompt(){
+  return `你是具有15年航管經驗的專家，熟悉塔臺、區域與流量管理及系統工程。`+
+         `請針對以下問題提供清晰、可執行的回答，包含：(1)核心結論 (2)關鍵假設 (3)建議步驟 (4)KPI (5)風險。\n\n`+
+         `主題：${topicEl.value}\n目標：${goalEl.value}\n問題：${questionEl.value}`;
+}
+
+// ----- 逐字動畫顯示 -----
+function typeWriter(el,text,speed=15){
+  el.textContent=""; let i=0;
+  clearInterval(typingTimer);
+  typingTimer=setInterval(()=>{
+    el.textContent+=text.charAt(i);
+    i++;
+    if(i>=text.length) clearInterval(typingTimer);
+  },speed);
+  lastText=text;
+}
+stopBtn.onclick=()=>{clearInterval(typingTimer); answerEl.textContent=lastText;};
+
+// ----- 語音朗讀 -----
+speakBtn.onclick=()=>{
+  const text=answerEl.textContent;
+  if(!text) return alert("沒有回答可朗讀");
+  const utter=new SpeechSynthesisUtterance(text);
+  utter.lang='zh-TW';
+  speechSynthesis.speak(utter);
+};
+
+// ----- 模擬回答 -----
+function mockAnswer(){
+  return `（模擬回覆）
+核心結論：可透過動態流量分流減少高峰延誤約15%。
+假設：流量資料準確且具彈性。
+建議步驟：
+1. 即時監控航班序列並優化排序；
+2. 中期導入AI預測流量；
+3. 長期推動TBO航跡管理。
+KPI：平均離場延誤、航班吞吐率。
+風險：數據不全導致決策偏差。`;
+}
+
+// ----- 歷史紀錄 -----
+let history=[];
+function addHistory(question,answer){
+  history.unshift({q:question,a:answer});
+  if(history.length>5) history.pop();
+  renderHistory();
+}
+function renderHistory(){
+  historyList.innerHTML="";
+  history.forEach(h=>{
+    const div=document.createElement('div');
+    div.className='history-item';
+    div.innerHTML=`<b>Q:</b> ${h.q}<br><b>A:</b> ${h.a}`;
+    historyList.appendChild(div);
+  });
+}
+
+// ----- 下載報告 -----
+downloadBtn.onclick=()=>{
+  if(!lastText) return alert("沒有回答可下載");
+  const md=`# 航管 AI 問答報告\n\n**主題**: ${topicEl.value}\n**目標**: ${goalEl.value}\n**問題**:\n${questionEl.value}\n\n**AI 回答**:\n${lastText}`;
+  const blob=new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='atm_ai_report.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// ----- 清除 -----
+clearBtn.onclick=()=>{
+  answerEl.textContent="尚無回覆";
+  statusEl.textContent="";
+  questionEl.value="";
+};
+
+// ----- 呼叫 OpenAI API -----
+async function callOpenAI(prompt,apiKey){
+  const res=await fetch("https://api.openai.com/v1/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},
+    body:JSON.stringify({
+      model:"gpt-4o-mini",
+      messages:[
+        {role:"system",content:"你是航管領域的專家，請提供清晰可執行回答"},
+        {role:"user",content:prompt}
+      ],
+      temperature:0.3,
+      max_tokens:800
+    })
+  });
+  if(!res.ok){ const txt=await res.text(); throw new Error(`HTTP ${res.status}: ${txt}`);}
+  const data=await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "[未取得回覆]";
+}
+
+// ----- 送出問題事件 -----
+askBtn.onclick=async()=>{
+  if(!questionEl.value.trim()) return alert("請輸入問題");
+  const prompt=buildPrompt();
+  const key=apiKeyEl.value.trim();
+  if(!key) return alert("請輸入 API Key 或使用模擬模式");
+  statusEl.textContent="⌛ 正在取得 AI 回覆...";
+  answerEl.textContent="";
+  try{
+    const reply=await callOpenAI(prompt,key);
+    typeWriter(answerEl,reply);
+    statusEl.textContent="✅ 完成";
+    addHistory(questionEl.value,reply);
+  }catch(e){
+    statusEl.textContent="❌ 錯誤：" + e.message;
+    answerEl.textContent="";
+  }
+};
+
+// ----- 模擬模式事件 -----
+mockBtn.onclick=()=>{
+  const reply=mockAnswer();
+  typeWriter(answerEl,reply);
+  statusEl.textContent="💡 模擬回答完成";
+  addHistory(questionEl.value||"[模擬問題]",reply);
+};
+</script>
+</body>
+</html>
